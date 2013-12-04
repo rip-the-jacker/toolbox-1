@@ -15,10 +15,14 @@ import urllib2
 import urllib
 import StringIO
 from PIL import Image
+import re 
+
+
 
 class ImageCacheError(Exception):
     def __init__(self,message):
         traceback.print_exc(file=sys.stdout)
+
 class BadInputError(Exception):
     def __init__(self,message):
         print message
@@ -31,6 +35,24 @@ def get_image_format(url):
 def get_image_name(fullpathname):
     extension = fullpathname.split('/')[-1]
     return extension
+
+def validate_params(inputdict):
+    print inputdict
+    if 'http' in inputdict['source'] :
+        regex = re.compile(
+            r'^https?://'  # http:// or https://
+            r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+[A-Z]{2,6}\.?|'  # domain...
+            r'localhost|'  # localhost...
+            r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})' # ...or ip
+            r'(?::\d+)?'  # optional port
+            r'(?:/?|[/?]\S+)$', re.IGNORECASE)
+        url_string = inputdict['source']
+        isvalid =  regex.search(url)
+        if not isvalid:
+            raise ValueError("url entered is not in valid format")
+
+
+        
 
 def cache_image(**kwargs):
     if not 'algorithm' in kwargs.keys():
@@ -79,10 +101,8 @@ def generateThumbnailAndSave(image,kwargs,format_):
         image_lib_obj = Image.open(im)
         if image_lib_obj.mode != "RGB":
             image_lib_obj = image_lib_obj.convert("RGB")
-            image_lib_obj.thumbnail(kwargs['size'],getattr(Image,kwargs['algorithm']))
+        image_lib_obj.thumbnail(kwargs['size'],getattr(Image,kwargs['algorithm']))
         path = kwargs['path']+get_image_name(image.name)
-        print path
-        print format_
         image_lib_obj.save(path, format_)
     except IOError as e:
         raise ImageCacheError(e.message)
