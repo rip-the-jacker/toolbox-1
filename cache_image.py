@@ -47,7 +47,7 @@ def validate_params(inputdict):
             r'(?::\d+)?'  # optional port
             r'(?:/?|[/?]\S+)$', re.IGNORECASE)
         url_string = inputdict['source']
-        isvalid =  regex.search(url)
+        isvalid =  regex.search(url_string)
         if not isvalid:
             raise ValueError("url entered is not in valid format")
 
@@ -91,18 +91,25 @@ def perform_execute(kwargs):
         generateThumbnailAndSave(image,kwargs,format_)
 
 
-def generateThumbnailAndSave(image,kwargs,format_):
- 
+def generateThumbnailAndSave(image, kwargs, format_):
     format_ = 'JPEG' if format_ == 'JPG' else format_
+    required_size = kwargs['size']
+    algorithm = kwargs['algorithm']
     #on some machine JPG gives error
     try:
+        path = kwargs['path']+get_image_name(image.name)
         im = StringIO.StringIO(image.read())
-        print im
         image_lib_obj = Image.open(im)
         if image_lib_obj.mode != "RGB":
             image_lib_obj = image_lib_obj.convert("RGB")
-        image_lib_obj.thumbnail(kwargs['size'],getattr(Image,kwargs['algorithm']))
-        path = kwargs['path']+get_image_name(image.name)
+        image_lib_obj.thumbnail(required_size, getattr(Image, algorithm))
+        if image_lib_obj.size[0] < required_size[0] or\
+           image_lib_obj.size[1] < required_size[1]:
+            new_img_obj = Image.new('RGBA', required_size, (255, 255, 255, 0))
+            offset = ((required_size[0]-image_lib_obj.size[0])/2, \
+                      (required_size[1]-image_lib_obj.size[1])/2)
+            new_img_obj.paste(image, offset)
+            new_img_obj.save(path, format_)
         image_lib_obj.save(path, format_)
     except IOError as e:
         raise ImageCacheError(e.message)
